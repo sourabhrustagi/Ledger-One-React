@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LedgerOne API curl commands</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --surface: #111a2e;
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --code-bg: #060b16;
+      --ok: #4ade80;
+      --err: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 2rem 1rem 4rem;
+    }
+    h1 { margin: 0 0 0.25rem; font-size: 1.8rem; }
+    h2 { margin: 2.5rem 0 0.5rem; font-size: 1.2rem; border-top: 1px solid var(--border); padding-top: 1.5rem; }
+    p.lead, p.muted { color: var(--muted); }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+    }
+    label { font-size: 0.9rem; color: var(--muted); display: block; margin-bottom: 0.4rem; }
+    input[type='text'] {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 0.8rem;
+      font: inherit;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+    }
+    .block {
+      position: relative;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin: 0.75rem 0;
+    }
+    .block-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.45rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    pre {
+      margin: 0;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      white-space: pre;
+    }
+    button.copy {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.35rem 0.8rem;
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.copy:hover { filter: brightness(1.1); }
+    button.copy.done { background: var(--ok); color: #052e16; }
+    button.copy-all {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 10px;
+      padding: 0.55rem 1rem;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; margin-top: 1rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 0.75rem 0; }
+    th, td { text-align: left; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .s-ok { color: var(--ok); }
+    .s-err { color: var(--err); }
+    .toast {
+      position: fixed;
+      bottom: 1.25rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>LedgerOne API: curl commands</h1>
+  <p class="lead">Copy any command with its <strong>Copy</strong> button. Start the app first with <code>./start.sh</code>, then run the commands in order: login first, then use the token from step 2 in the Authorization header.</p>
+
+  <div class="card">
+    <label for="base">Base URL (change if you run the app on another port)</label>
+    <input id="base" type="text" value="http://localhost:5173" spellcheck="false" />
+    <div class="toolbar">
+      <span class="muted">Commands below update to use this base URL.</span>
+      <button class="copy-all" type="button" data-copy-all>Copy all commands</button>
+    </div>
+  </div>
+
+  <h2>1. Send OTP</h2>
+  <p class="muted"><code>POST /api/auth/otp</code>. Sends an OTP to the mobile number. Any 10-digit number is accepted.</p>
+  <div class="block" data-cmd="curl -X POST {BASE}/api/auth/otp -H 'Content-Type: application/json' -d '{&quot;phone&quot;:&quot;9876543210&quot;}'">
+    <div class="block-head"><span>Request</span><button class="copy" type="button">Copy</button></div>
+    <pre><code class="cmd"></code></pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span>Response <span class="s-ok">200</span></span></div>
+    <pre>{
+  "message": "OTP sent",
+  "expiresInSeconds": 300,
+  "mockOtp": "123456"
+}</pre>
+  </div>
+
+  <h2>2. Verify OTP (login)</h2>
+  <p class="muted"><code>POST /api/auth/verify</code>. Use <code>123456</code> as the OTP. Save the returned token.</p>
+  <div class="block" data-cmd="curl -X POST {BASE}/api/auth/verify -H 'Content-Type: application/json' -d '{&quot;phone&quot;:&quot;9876543210&quot;,&quot;otp&quot;:&quot;123456&quot;}'">
+    <div class="block-head"><span>Request</span><button class="copy" type="button">Copy</button></div>
+    <pre><code class="cmd"></code></pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span>Response <span class="s-ok">200</span></span></div>
+    <pre>{
+  "token": "mock-session-jwt-token-active"
+}</pre>
+  </div>
+
+  <h2>3. Get account</h2>
+  <p class="muted"><code>GET /api/account</code>. Requires the bearer token.</p>
+  <div class="block" data-cmd="curl {BASE}/api/account -H 'Authorization: Bearer mock-session-jwt-token-active'">
+    <div class="block-head"><span>Request</span><button class="copy" type="button">Copy</button></div>
+    <pre><code class="cmd"></code></pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span>Response <span class="s-ok">200</span></span></div>
+    <pre>{
+  "account": {
+    "name": "Asha Rao",
+    "phone": "9876543210",
+    "email": "asha.rao@ledgerone.io",
+    "accountName": "Savings Account",
+    "accountNumber": "920010048210943",
+    "ifsc": "HDFC0000240",
+    "balanceMinor": 24567890,
+    "currency": "INR"
+  }
+}</pre>
+  </div>
+  <p class="muted"><code>balanceMinor</code> is in paise. <code>24567890</code> is ₹2,45,678.90.</p>
+
+  <h2>4. Get transactions</h2>
+  <p class="muted"><code>GET /api/transactions</code>. Requires the bearer token.</p>
+  <div class="block" data-cmd="curl {BASE}/api/transactions -H 'Authorization: Bearer mock-session-jwt-token-active'">
+    <div class="block-head"><span>Request</span><button class="copy" type="button">Copy</button></div>
+    <pre><code class="cmd"></code></pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span>Response <span class="s-ok">200</span> (shortened)</span></div>
+    <pre>{
+  "transactions": [
+    {
+      "id": "tx-001",
+      "title": "Monthly Salary Credit",
+      "subtitle": "TechCorp India · NEFT",
+      "amountMinor": 21500000,
+      "direction": "CREDIT",
+      "timestamp": 1793795327570
+    }
+    // ... 4 more transactions
+  ]
+}</pre>
+  </div>
+
+  <h2>5. Logout</h2>
+  <p class="muted"><code>POST /api/auth/logout</code>. Requires the bearer token. The mock does not revoke the token, so it still works in curl after logout.</p>
+  <div class="block" data-cmd="curl -X POST {BASE}/api/auth/logout -H 'Authorization: Bearer mock-session-jwt-token-active'">
+    <div class="block-head"><span>Request</span><button class="copy" type="button">Copy</button></div>
+    <pre><code class="cmd"></code></pre>
+  </div>
+  <div class="block">
+    <div class="block-head"><span>Response <span class="s-ok">200</span></span></div>
+    <pre>{
+  "ok": true
+}</pre>
+  </div>
+
+  <h2>Errors</h2>
+  <table>
+    <thead><tr><th>Case</th><th>Status</th><th>Body</th></tr></thead>
+    <tbody>
+      <tr><td>Bad phone format</td><td class="s-err">400</td><td><code>{"error":"Enter a valid 10-digit mobile number"}</code></td></tr>
+      <tr><td>Wrong OTP</td><td class="s-err">401</td><td><code>{"error":"Invalid OTP"}</code></td></tr>
+      <tr><td>Missing or wrong bearer token</td><td class="s-err">401</td><td><code>{"error":"Missing or invalid session token"}</code></td></tr>
+      <tr><td>Unknown route</td><td class="s-err">404</td><td><code>{"error":"No mock route for ..."}</code></td></tr>
+    </tbody>
+  </table>
+</main>
+
+<div class="toast" id="toast">Copied</div>
+
+<script>
+  const base = document.getElementById('base');
+  const toast = document.getElementById('toast');
+  const blocks = [...document.querySelectorAll('[data-cmd]')];
+
+  const commandFor = (block) => block.dataset.cmd.replaceAll('{BASE}', base.value.replace(/\/+$/, ''));
+
+  const render = () => {
+    blocks.forEach((block) => {
+      block.querySelector('.cmd').textContent = commandFor(block);
+    });
+  };
+
+  const copyText = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fallback for browsers that block the Clipboard API on file:// pages.
+      const area = document.createElement('textarea');
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand('copy');
+      area.remove();
+      return ok;
+    }
+  };
+
+  const showToast = (message) => {
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1400);
+  };
+
+  document.querySelectorAll('button.copy').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const block = button.closest('[data-cmd]');
+      const ok = await copyText(commandFor(block));
+      button.textContent = ok ? 'Copied' : 'Failed';
+      button.classList.toggle('done', ok);
+      setTimeout(() => { button.textContent = 'Copy'; button.classList.remove('done'); }, 1400);
+      showToast(ok ? 'Command copied' : 'Copy failed. Select the text and copy manually.');
+    });
+  });
+
+  document.querySelector('[data-copy-all]').addEventListener('click', async () => {
+    const all = blocks.map((block) => commandFor(block)).join('\n\n');
+    const ok = await copyText(all);
+    showToast(ok ? 'All commands copied' : 'Copy failed. Select the text and copy manually.');
+  });
+
+  base.addEventListener('input', render);
+  render();
+</script>
+</body>
+</html>
