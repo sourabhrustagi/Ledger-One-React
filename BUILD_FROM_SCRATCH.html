@@ -1,0 +1,1211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LedgerOne: build from scratch</title>
+  <style>
+    :root {
+      --bg: #0b1220; --surface: #111a2e; --border: rgba(255,255,255,0.1);
+      --text: #f8fafc; --muted: #94a3b8; --accent: #3b82f6; --code-bg: #060b16;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg); color: var(--text); line-height: 1.6; }
+    main { max-width: 860px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; margin: 2.5rem 0 0.75rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+    h3 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; }
+    p, li { color: var(--text); }
+    a { color: var(--accent); }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em;
+           background: rgba(255,255,255,0.06); padding: 0.1em 0.35em; border-radius: 5px; }
+    .block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; margin: 0.9rem 0; overflow: hidden; }
+    .block-head { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); }
+    .block pre { margin: 0; padding: 0.9rem 1rem; overflow-x: auto; }
+    .block pre code { background: none; padding: 0; font-size: 0.86rem; line-height: 1.55; white-space: pre; }
+    button.copy { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 0.3rem 0.75rem;
+                  font: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+    button.copy.done { background: #4ade80; color: #052e16; }
+    table { width: 100%; border-collapse: collapse; margin: 0.9rem 0; font-size: 0.92rem; }
+    th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    .toc { display: none; }
+  </style>
+</head>
+<body>
+<main>
+<h1 id="ledgerone-build-this-project-from-scratch">LedgerOne: build this project from scratch</h1>
+<p>This guide recreates the project step by step. Each step gives the exact file to create and its full contents. Do the steps in order.</p>
+<p>The app has three screens:</p>
+<ul>
+<li><strong>Login:</strong> mobile number, then 6-digit OTP (demo: <code>9876543210</code> / <code>123456</code>).</li>
+<li><strong>Dashboard:</strong> balance and recent transactions.</li>
+<li><strong>Account:</strong> profile details and a Log out button.</li>
+</ul>
+<p>All APIs are mocked. The browser intercepts <code>/api/*</code> calls, and the Vite dev server serves the same routes for curl.</p>
+<hr />
+<h2 id="step-1-prerequisites">Step 1: Prerequisites</h2>
+<p>Install Node.js 18 or newer (Node 20+ recommended) and check it:</p>
+<div class="block"><div class="block-head"><span>bash</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>node -v
+npm -v
+</code></pre></div></div>
+<hr />
+<h2 id="step-2-create-the-project-folder">Step 2: Create the project folder</h2>
+<div class="block"><div class="block-head"><span>bash</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>mkdir ledgerOne
+cd ledgerOne
+mkdir -p src/components src/mock public
+</code></pre></div></div>
+<hr />
+<h2 id="step-3-create-packagejson">Step 3: Create <code>package.json</code></h2>
+<p>Create <code>package.json</code> in the project root:</p>
+<div class="block"><div class="block-head"><span>json</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>{
+  &quot;name&quot;: &quot;ledgerone&quot;,
+  &quot;private&quot;: true,
+  &quot;version&quot;: &quot;0.0.0&quot;,
+  &quot;type&quot;: &quot;module&quot;,
+  &quot;scripts&quot;: {
+    &quot;dev&quot;: &quot;vite&quot;,
+    &quot;build&quot;: &quot;tsc -b &amp;&amp; vite build&quot;,
+    &quot;lint&quot;: &quot;oxlint&quot;,
+    &quot;preview&quot;: &quot;vite preview&quot;
+  },
+  &quot;dependencies&quot;: {
+    &quot;lucide-react&quot;: &quot;^1.61.0&quot;,
+    &quot;react&quot;: &quot;^19.3.1&quot;,
+    &quot;react-dom&quot;: &quot;^19.3.1&quot;
+  },
+  &quot;devDependencies&quot;: {
+    &quot;@types/node&quot;: &quot;^24.19.2&quot;,
+    &quot;@types/react&quot;: &quot;^19.3.0&quot;,
+    &quot;@types/react-dom&quot;: &quot;^19.3.0&quot;,
+    &quot;@vitejs/plugin-react&quot;: &quot;^6.1.2&quot;,
+    &quot;oxlint&quot;: &quot;^1.88.0&quot;,
+    &quot;typescript&quot;: &quot;~6.0.3&quot;,
+    &quot;vite&quot;: &quot;^8.3.4&quot;
+  }
+}
+</code></pre></div></div>
+<p>Install the dependencies:</p>
+<div class="block"><div class="block-head"><span>bash</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>npm install
+</code></pre></div></div>
+<hr />
+<h2 id="step-4-create-the-typescript-configs">Step 4: Create the TypeScript configs</h2>
+<p><strong><code>tsconfig.json</code></strong></p>
+<div class="block"><div class="block-head"><span>json</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>{
+  &quot;files&quot;: [],
+  &quot;references&quot;: [
+    { &quot;path&quot;: &quot;./tsconfig.app.json&quot; },
+    { &quot;path&quot;: &quot;./tsconfig.node.json&quot; }
+  ]
+}
+</code></pre></div></div>
+<p><strong><code>tsconfig.app.json</code></strong></p>
+<div class="block"><div class="block-head"><span>json</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>{
+  &quot;compilerOptions&quot;: {
+    &quot;tsBuildInfoFile&quot;: &quot;./node_modules/.tmp/tsconfig.app.tsbuildinfo&quot;,
+    &quot;target&quot;: &quot;ES2022&quot;,
+    &quot;lib&quot;: [&quot;ES2023&quot;, &quot;DOM&quot;, &quot;DOM.Iterable&quot;],
+    &quot;module&quot;: &quot;ESNext&quot;,
+    &quot;types&quot;: [&quot;vite/client&quot;],
+    &quot;skipLibCheck&quot;: true,
+
+    /* Bundler mode */
+    &quot;moduleResolution&quot;: &quot;bundler&quot;,
+    &quot;verbatimModuleSyntax&quot;: false,
+    &quot;noEmit&quot;: true,
+    &quot;jsx&quot;: &quot;react-jsx&quot;,
+
+    /* Linting */
+    &quot;noUnusedLocals&quot;: false,
+    &quot;noUnusedParameters&quot;: false,
+    &quot;noFallthroughCasesInSwitch&quot;: true
+  },
+  &quot;include&quot;: [&quot;src&quot;]
+}
+</code></pre></div></div>
+<p><strong><code>tsconfig.node.json</code></strong></p>
+<div class="block"><div class="block-head"><span>json</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>{
+  &quot;compilerOptions&quot;: {
+    &quot;tsBuildInfoFile&quot;: &quot;./node_modules/.tmp/tsconfig.node.tsbuildinfo&quot;,
+    &quot;target&quot;: &quot;es2023&quot;,
+    &quot;lib&quot;: [&quot;ES2023&quot;],
+    &quot;types&quot;: [&quot;node&quot;],
+    &quot;skipLibCheck&quot;: true,
+
+    /* Bundler mode */
+    &quot;module&quot;: &quot;nodenext&quot;,
+    &quot;allowImportingTsExtensions&quot;: true,
+    &quot;verbatimModuleSyntax&quot;: true,
+    &quot;moduleDetection&quot;: &quot;force&quot;,
+    &quot;noEmit&quot;: true,
+
+    /* Linting */
+    &quot;noUnusedLocals&quot;: true,
+    &quot;noUnusedParameters&quot;: true,
+    &quot;erasableSyntaxOnly&quot;: true,
+    &quot;noFallthroughCasesInSwitch&quot;: true
+  },
+  &quot;include&quot;: [&quot;vite.config.ts&quot;]
+}
+</code></pre></div></div>
+<hr />
+<h2 id="step-5-create-the-lint-and-git-config">Step 5: Create the lint and git config</h2>
+<p><strong><code>.oxlintrc.json</code></strong></p>
+<div class="block"><div class="block-head"><span>json</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>{
+  &quot;$schema&quot;: &quot;./node_modules/oxlint/configuration_schema.json&quot;,
+  &quot;plugins&quot;: [&quot;react&quot;, &quot;typescript&quot;, &quot;oxc&quot;],
+  &quot;rules&quot;: {
+    &quot;react/rules-of-hooks&quot;: &quot;error&quot;,
+    &quot;react/only-export-components&quot;: [&quot;warn&quot;, { &quot;allowConstantExport&quot;: true }]
+  }
+}
+</code></pre></div></div>
+<p><strong><code>.gitignore</code></strong></p>
+<div class="block"><div class="block-head"><span>gitignore</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code># Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+</code></pre></div></div>
+<hr />
+<h2 id="step-6-create-the-vite-config">Step 6: Create the Vite config</h2>
+<p><strong><code>vite.config.ts</code></strong></p>
+<p>This plugin serves <code>/api/*</code> from the mock backend, so curl works against <code>npm run dev</code>.</p>
+<div class="block"><div class="block-head"><span>ts</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>import react from '@vitejs/plugin-react'
+import { defineConfig, type Plugin } from 'vite'
+import { mockApi } from './src/mock/mockApi.js'
+
+// Serves /api/* from the mock backend so curl and the browser hit the same routes.
+const mockApiPlugin = (): Plugin =&gt; ({
+  name: 'ledgerone-mock-api',
+  configureServer(server) {
+    server.middlewares.use(async (req, res, next) =&gt; {
+      if (!req.url?.startsWith('/api/')) return next()
+
+      const chunks: Buffer[] = []
+      for await (const chunk of req) chunks.push(chunk as Buffer)
+      const raw = Buffer.concat(chunks).toString('utf8')
+      const body = raw ? JSON.parse(raw) : undefined
+
+      const path = req.url.split('?')[0]
+      const result = mockApi(req.method ?? 'GET', path, req.headers.authorization ?? null, body)
+      res.statusCode = result.status
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify(result.body))
+    })
+  },
+})
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), mockApiPlugin()],
+})
+</code></pre></div></div>
+<p>Note the <code>.js</code> extension on the <code>mockApi</code> import. The node tsconfig uses <code>nodenext</code> resolution, which requires it.</p>
+<hr />
+<h2 id="step-7-create-indexhtml">Step 7: Create <code>index.html</code></h2>
+<div class="block"><div class="block-head"><span>html</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+  &lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot; /&gt;
+    &lt;link rel=&quot;icon&quot; type=&quot;image/svg+xml&quot; href=&quot;data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D4ED8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'&gt;&lt;rect width='20' height='14' x='2' y='5' rx='2'/&gt;&lt;line x1='2' x2='22' y1='10' y2='10'/&gt;&lt;/svg&gt;&quot; /&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no&quot; /&gt;
+    &lt;meta name=&quot;description&quot; content=&quot;LedgerOne - Premium Banking, Personal Finance &amp; Double-Entry Ledger Web Application&quot; /&gt;
+    &lt;title&gt;LedgerOne | Banking &amp; Personal Ledger&lt;/title&gt;
+    &lt;!-- Modern Typography: Inter &amp; Plus Jakarta Sans --&gt;
+    &lt;link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;&gt;
+    &lt;link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin&gt;
+    &lt;link href=&quot;https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap&quot; rel=&quot;stylesheet&quot;&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div id=&quot;root&quot;&gt;&lt;/div&gt;
+    &lt;script type=&quot;module&quot; src=&quot;/src/main.tsx&quot;&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre></div></div>
+<hr />
+<h2 id="step-8-create-the-mock-backend">Step 8: Create the mock backend</h2>
+<p>The mock routes live in one module. Both the browser interceptor (Step 9) and the Vite plugin (Step 6) call it.</p>
+<p><strong><code>src/mock/mockApi.ts</code></strong></p>
+<div class="block"><div class="block-head"><span>ts</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>// Mock backend. Shared by the browser fetch interceptor (mockFetch.ts) and the
+// Vite dev-server middleware (vite.config.ts), so the app and curl hit the same routes.
+
+export const MOCK_OTP = '123456';
+export const MOCK_TOKEN = 'mock-session-jwt-token-active';
+
+export interface MockAccount {
+  name: string;
+  phone: string;
+  email: string;
+  accountName: string;
+  accountNumber: string;
+  ifsc: string;
+  balanceMinor: number; // paise
+  currency: 'INR';
+}
+
+export interface MockTransaction {
+  id: string;
+  title: string;
+  subtitle: string;
+  amountMinor: number; // paise, always positive
+  direction: 'CREDIT' | 'DEBIT';
+  timestamp: number; // epoch ms
+}
+
+export interface MockResponse {
+  status: number;
+  body: unknown;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const account: MockAccount = {
+  name: 'Asha Rao',
+  phone: '9876543210',
+  email: 'asha.rao@ledgerone.io',
+  accountName: 'Savings Account',
+  accountNumber: '920010048210943',
+  ifsc: 'HDFC0000240',
+  balanceMinor: 24567890,
+  currency: 'INR',
+};
+
+const transactions: MockTransaction[] = [
+  { id: 'tx-001', title: 'Monthly Salary Credit', subtitle: 'TechCorp India · NEFT', amountMinor: 21500000, direction: 'CREDIT', timestamp: Date.now() - DAY_MS },
+  { id: 'tx-002', title: 'Whole Foods Market', subtitle: 'Groceries · POS 4821', amountMinor: 485000, direction: 'DEBIT', timestamp: Date.now() - 2 * DAY_MS },
+  { id: 'tx-003', title: 'Smoke House Deli', subtitle: 'Dining · UPI asha@okaxis', amountMinor: 342000, direction: 'DEBIT', timestamp: Date.now() - 3 * DAY_MS },
+  { id: 'tx-004', title: 'Rahul Mehta', subtitle: 'UPI rahul.m@okicici', amountMinor: 120000, direction: 'CREDIT', timestamp: Date.now() - 4 * DAY_MS },
+  { id: 'tx-005', title: 'BESCOM Electricity', subtitle: 'Utilities · Consumer 048291039', amountMinor: 50000, direction: 'DEBIT', timestamp: Date.now() - 6 * DAY_MS },
+];
+
+const isPhone = (value: unknown): value is string =&gt; typeof value === 'string' &amp;&amp; /^\d{10}$/.test(value);
+
+const isAuthorized = (authorization: string | null) =&gt; authorization === `Bearer ${MOCK_TOKEN}`;
+
+const error = (status: number, message: string): MockResponse =&gt; ({ status, body: { error: message } });
+
+/** Routes a mock API call. `path` excludes the query string. */
+export function mockApi(method: string, path: string, authorization: string | null, body: unknown): MockResponse {
+  const payload = (body ?? {}) as Record&lt;string, unknown&gt;;
+
+  if (method === 'POST' &amp;&amp; path === '/api/auth/otp') {
+    if (!isPhone(payload.phone)) return error(400, 'Enter a valid 10-digit mobile number');
+    return { status: 200, body: { message: 'OTP sent', expiresInSeconds: 300, mockOtp: MOCK_OTP } };
+  }
+
+  if (method === 'POST' &amp;&amp; path === '/api/auth/verify') {
+    if (!isPhone(payload.phone)) return error(400, 'Enter a valid 10-digit mobile number');
+    if (payload.otp !== MOCK_OTP) return error(401, 'Invalid OTP');
+    return { status: 200, body: { token: MOCK_TOKEN } };
+  }
+
+  if (path.startsWith('/api/') &amp;&amp; !isAuthorized(authorization)) {
+    return error(401, 'Missing or invalid session token');
+  }
+
+  if (method === 'POST' &amp;&amp; path === '/api/auth/logout') {
+    return { status: 200, body: { ok: true } };
+  }
+
+  if (method === 'GET' &amp;&amp; path === '/api/account') {
+    return { status: 200, body: { account } };
+  }
+
+  if (method === 'GET' &amp;&amp; path === '/api/transactions') {
+    return { status: 200, body: { transactions } };
+  }
+
+  return error(404, `No mock route for ${method} ${path}`);
+}
+</code></pre></div></div>
+<p><strong><code>src/mock/mockFetch.ts</code></strong></p>
+<div class="block"><div class="block-head"><span>ts</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>import { mockApi } from './mockApi';
+
+const LATENCY_MS = 400;
+
+/** Replaces window.fetch so every /api/* call is answered by the mock backend in the browser. */
+export function installMockFetch() {
+  const realFetch = window.fetch.bind(window);
+
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) =&gt; {
+    const url = new URL(String(input), window.location.href);
+    if (!url.pathname.startsWith('/api/')) return realFetch(input, init);
+
+    await new Promise((resolve) =&gt; setTimeout(resolve, LATENCY_MS));
+
+    const method = init?.method ?? 'GET';
+    const authorization = new Headers(init?.headers).get('Authorization');
+    const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
+    const result = mockApi(method, url.pathname, authorization, body);
+
+    return new Response(JSON.stringify(result.body), {
+      status: result.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+}
+</code></pre></div></div>
+<hr />
+<h2 id="step-9-create-the-api-client">Step 9: Create the API client</h2>
+<p><strong><code>src/api.ts</code></strong></p>
+<div class="block"><div class="block-head"><span>ts</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>import type { MockAccount, MockTransaction } from './mock/mockApi';
+
+export type { MockAccount as Account, MockTransaction as Transaction };
+
+const TOKEN_KEY = 'ledgerone.session';
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export const getSessionToken = (): string | null =&gt; {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+};
+
+export const setSessionToken = (token: string | null) =&gt; {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // Storage blocked: the session simply lasts for this page load.
+  }
+};
+
+async function request&lt;T&gt;(method: string, path: string, body?: unknown): Promise&lt;T&gt; {
+  const headers: Record&lt;string, string&gt; = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const token = getSessionToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(path, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new ApiError(res.status, data.error ?? 'Request failed');
+  return data as T;
+}
+
+export const sendOtp = (phone: string) =&gt;
+  request&lt;{ message: string; expiresInSeconds: number }&gt;('POST', '/api/auth/otp', { phone });
+
+export const verifyOtp = (phone: string, otp: string) =&gt;
+  request&lt;{ token: string }&gt;('POST', '/api/auth/verify', { phone, otp });
+
+export const logout = () =&gt; request&lt;{ ok: boolean }&gt;('POST', '/api/auth/logout');
+
+export const getAccount = () =&gt; request&lt;{ account: MockAccount }&gt;('GET', '/api/account');
+
+export const getTransactions = () =&gt;
+  request&lt;{ transactions: MockTransaction[] }&gt;('GET', '/api/transactions');
+</code></pre></div></div>
+<hr />
+<h2 id="step-10-create-the-screens">Step 10: Create the screens</h2>
+<p><strong><code>src/components/LoginScreen.tsx</code></strong></p>
+<div class="block"><div class="block-head"><span>tsx</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>import { useState, type FormEvent } from 'react';
+import { sendOtp, verifyOtp } from '../api';
+
+interface LoginScreenProps {
+  onLoggedIn: (token: string) =&gt; void;
+}
+
+export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
+  const [step, setStep] = useState&lt;'phone' | 'otp'&gt;('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [error, setError] = useState&lt;string | null&gt;(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = async (action: () =&gt; Promise&lt;void&gt;) =&gt; {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePhoneSubmit = (e: FormEvent) =&gt; {
+    e.preventDefault();
+    run(async () =&gt; {
+      await sendOtp(phone);
+      setStep('otp');
+    });
+  };
+
+  const handleOtpSubmit = (e: FormEvent) =&gt; {
+    e.preventDefault();
+    run(async () =&gt; {
+      const { token } = await verifyOtp(phone, otp);
+      onLoggedIn(token);
+    });
+  };
+
+  return (
+    &lt;div className=&quot;auth-page&quot;&gt;
+      &lt;div className=&quot;card auth-card&quot;&gt;
+        &lt;h1 className=&quot;brand&quot;&gt;
+          Ledger&lt;span&gt;One&lt;/span&gt;
+        &lt;/h1&gt;
+
+        {error &amp;&amp; &lt;p className=&quot;error&quot;&gt;{error}&lt;/p&gt;}
+
+        {step === 'phone' ? (
+          &lt;form onSubmit={handlePhoneSubmit}&gt;
+            &lt;label className=&quot;field-label&quot; htmlFor=&quot;phone&quot;&gt;Mobile number&lt;/label&gt;
+            &lt;input
+              id=&quot;phone&quot;
+              className=&quot;input&quot;
+              type=&quot;tel&quot;
+              inputMode=&quot;numeric&quot;
+              placeholder=&quot;9876543210&quot;
+              value={phone}
+              onChange={(e) =&gt; setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              autoFocus
+            /&gt;
+            &lt;button className=&quot;btn-primary&quot; type=&quot;submit&quot; disabled={busy || phone.length !== 10}&gt;
+              {busy ? 'Sending…' : 'Send OTP'}
+            &lt;/button&gt;
+          &lt;/form&gt;
+        ) : (
+          &lt;form onSubmit={handleOtpSubmit}&gt;
+            &lt;label className=&quot;field-label&quot; htmlFor=&quot;otp&quot;&gt;Enter the 6-digit OTP sent to {phone}&lt;/label&gt;
+            &lt;input
+              id=&quot;otp&quot;
+              className=&quot;input otp-input&quot;
+              type=&quot;text&quot;
+              inputMode=&quot;numeric&quot;
+              placeholder=&quot;123456&quot;
+              value={otp}
+              onChange={(e) =&gt; setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              autoFocus
+            /&gt;
+            &lt;button className=&quot;btn-primary&quot; type=&quot;submit&quot; disabled={busy || otp.length !== 6}&gt;
+              {busy ? 'Verifying…' : 'Verify &amp; log in'}
+            &lt;/button&gt;
+            &lt;button className=&quot;btn-link&quot; type=&quot;button&quot; onClick={() =&gt; { setStep('phone'); setOtp(''); setError(null); }}&gt;
+              Change number
+            &lt;/button&gt;
+          &lt;/form&gt;
+        )}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+</code></pre></div></div>
+<p><strong><code>src/components/Dashboard.tsx</code></strong></p>
+<div class="block"><div class="block-head"><span>tsx</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>import { useEffect, useState } from 'react';
+import { getTransactions, type Account, type Transaction } from '../api';
+
+const formatInr = (minor: number) =&gt;
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(minor / 100);
+
+const formatDate = (timestamp: number) =&gt;
+  new Date(timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+interface DashboardProps {
+  account: Account;
+}
+
+export function Dashboard({ account }: DashboardProps) {
+  const [transactions, setTransactions] = useState&lt;Transaction[] | null&gt;(null);
+  const [error, setError] = useState&lt;string | null&gt;(null);
+
+  useEffect(() =&gt; {
+    let active = true;
+    getTransactions()
+      .then((data) =&gt; active &amp;&amp; setTransactions(data.transactions))
+      .catch((err: Error) =&gt; active &amp;&amp; setError(err.message));
+    return () =&gt; {
+      active = false;
+    };
+  }, []);
+
+  return (
+    &lt;section className=&quot;dashboard&quot;&gt;
+      &lt;div className=&quot;card balance-card&quot;&gt;
+        &lt;p className=&quot;muted&quot;&gt;Hi {account.name.split(' ')[0]}, your balance&lt;/p&gt;
+        &lt;p className=&quot;balance&quot;&gt;{formatInr(account.balanceMinor)}&lt;/p&gt;
+        &lt;p className=&quot;muted&quot;&gt;
+          {account.accountName} · A/c ••••{account.accountNumber.slice(-4)}
+        &lt;/p&gt;
+      &lt;/div&gt;
+
+      &lt;div className=&quot;dashboard-txns&quot;&gt;
+        &lt;h2 className=&quot;section-title&quot;&gt;Recent transactions&lt;/h2&gt;
+
+        {error &amp;&amp; &lt;p className=&quot;error&quot;&gt;{error}&lt;/p&gt;}
+        {!error &amp;&amp; !transactions &amp;&amp; &lt;p className=&quot;muted&quot;&gt;Loading transactions…&lt;/p&gt;}
+
+        {transactions &amp;&amp; (
+          &lt;ul className=&quot;card tx-list&quot;&gt;
+            {transactions.map((tx) =&gt; (
+              &lt;li key={tx.id} className=&quot;tx-row&quot;&gt;
+                &lt;div&gt;
+                  &lt;p className=&quot;tx-title&quot;&gt;{tx.title}&lt;/p&gt;
+                  &lt;p className=&quot;muted&quot;&gt;{tx.subtitle}&lt;/p&gt;
+                  &lt;p className=&quot;muted&quot;&gt;{formatDate(tx.timestamp)}&lt;/p&gt;
+                &lt;/div&gt;
+                &lt;p className={tx.direction === 'CREDIT' ? 'amount credit' : 'amount debit'}&gt;
+                  {tx.direction === 'CREDIT' ? '+' : '−'}
+                  {formatInr(tx.amountMinor)}
+                &lt;/p&gt;
+              &lt;/li&gt;
+            ))}
+          &lt;/ul&gt;
+        )}
+      &lt;/div&gt;
+    &lt;/section&gt;
+  );
+}
+</code></pre></div></div>
+<p><strong><code>src/components/AccountPage.tsx</code></strong></p>
+<div class="block"><div class="block-head"><span>tsx</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>import { useState } from 'react';
+import type { Account } from '../api';
+
+interface AccountPageProps {
+  account: Account;
+  onLogout: () =&gt; Promise&lt;void&gt;;
+}
+
+export function AccountPage({ account, onLogout }: AccountPageProps) {
+  const [busy, setBusy] = useState(false);
+
+  const handleLogout = async () =&gt; {
+    setBusy(true);
+    await onLogout();
+  };
+
+  const rows: [string, string][] = [
+    ['Name', account.name],
+    ['Mobile', `+91 ${account.phone}`],
+    ['Email', account.email],
+    ['Account', account.accountName],
+    ['Account number', account.accountNumber],
+    ['IFSC', account.ifsc],
+  ];
+
+  return (
+    &lt;section className=&quot;account&quot;&gt;
+      &lt;div className=&quot;card&quot;&gt;
+        &lt;h2 className=&quot;section-title&quot;&gt;Account details&lt;/h2&gt;
+        &lt;dl className=&quot;details&quot;&gt;
+          {rows.map(([label, value]) =&gt; (
+            &lt;div key={label} className=&quot;details-row&quot;&gt;
+              &lt;dt className=&quot;muted&quot;&gt;{label}&lt;/dt&gt;
+              &lt;dd&gt;{value}&lt;/dd&gt;
+            &lt;/div&gt;
+          ))}
+        &lt;/dl&gt;
+      &lt;/div&gt;
+
+      &lt;button className=&quot;btn-danger&quot; type=&quot;button&quot; onClick={handleLogout} disabled={busy}&gt;
+        {busy ? 'Logging out…' : 'Log out'}
+      &lt;/button&gt;
+    &lt;/section&gt;
+  );
+}
+</code></pre></div></div>
+<hr />
+<h2 id="step-11-create-the-app-shell-and-entry-point">Step 11: Create the app shell and entry point</h2>
+<p><strong><code>src/App.tsx</code></strong></p>
+<div class="block"><div class="block-head"><span>tsx</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>import { useEffect, useState } from 'react';
+import { ApiError, getAccount, getSessionToken, logout, setSessionToken, type Account } from './api';
+import { LoginScreen } from './components/LoginScreen';
+import { Dashboard } from './components/Dashboard';
+import { AccountPage } from './components/AccountPage';
+import { Home, User } from 'lucide-react';
+
+type Tab = 'home' | 'account';
+
+export default function App() {
+  const [token, setToken] = useState&lt;string | null&gt;(getSessionToken);
+  const [tab, setTab] = useState&lt;Tab&gt;('home');
+  const [account, setAccount] = useState&lt;Account | null&gt;(null);
+
+  const clearSession = () =&gt; {
+    setSessionToken(null);
+    setToken(null);
+    setAccount(null);
+    setTab('home');
+  };
+
+  useEffect(() =&gt; {
+    if (!token) return;
+    let active = true;
+    getAccount()
+      .then((data) =&gt; active &amp;&amp; setAccount(data.account))
+      .catch((err) =&gt; {
+        if (active &amp;&amp; err instanceof ApiError &amp;&amp; err.status === 401) clearSession();
+      });
+    return () =&gt; {
+      active = false;
+    };
+  }, [token]);
+
+  const handleLoggedIn = (newToken: string) =&gt; {
+    setSessionToken(newToken);
+    setToken(newToken);
+  };
+
+  const handleLogout = async () =&gt; {
+    try {
+      await logout();
+    } catch {
+      // The local session is dropped either way.
+    }
+    clearSession();
+  };
+
+  if (!token) return &lt;LoginScreen onLoggedIn={handleLoggedIn} /&gt;;
+
+  return (
+    &lt;div className=&quot;app&quot;&gt;
+      &lt;header className=&quot;topbar&quot;&gt;
+        &lt;span className=&quot;brand&quot;&gt;
+          Ledger&lt;span&gt;One&lt;/span&gt;
+        &lt;/span&gt;
+      &lt;/header&gt;
+
+      &lt;main className=&quot;content&quot;&gt;
+        {!account &amp;&amp; &lt;p className=&quot;muted&quot;&gt;Loading your account…&lt;/p&gt;}
+        {account &amp;&amp; tab === 'home' &amp;&amp; &lt;Dashboard account={account} /&gt;}
+        {account &amp;&amp; tab === 'account' &amp;&amp; &lt;AccountPage account={account} onLogout={handleLogout} /&gt;}
+      &lt;/main&gt;
+
+      &lt;nav className=&quot;bottom-nav&quot;&gt;
+        &lt;button className={tab === 'home' ? 'nav-item active' : 'nav-item'} onClick={() =&gt; setTab('home')}&gt;
+          &lt;Home size={20} /&gt;
+          &lt;span&gt;Dashboard&lt;/span&gt;
+        &lt;/button&gt;
+        &lt;button className={tab === 'account' ? 'nav-item active' : 'nav-item'} onClick={() =&gt; setTab('account')}&gt;
+          &lt;User size={20} /&gt;
+          &lt;span&gt;Account&lt;/span&gt;
+        &lt;/button&gt;
+      &lt;/nav&gt;
+    &lt;/div&gt;
+  );
+}
+</code></pre></div></div>
+<p><strong><code>src/main.tsx</code></strong></p>
+<div class="block"><div class="block-head"><span>tsx</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App'
+import { installMockFetch } from './mock/mockFetch'
+
+installMockFetch()
+
+createRoot(document.getElementById('root')!).render(
+  &lt;StrictMode&gt;
+    &lt;App /&gt;
+  &lt;/StrictMode&gt;,
+)
+</code></pre></div></div>
+<hr />
+<h2 id="step-12-create-the-stylesheet">Step 12: Create the stylesheet</h2>
+<p><strong><code>src/index.css</code></strong></p>
+<div class="block"><div class="block-head"><span>css</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>:root {
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --bg: #0b1220;
+  --surface: #111a2e;
+  --border: rgba(255, 255, 255, 0.1);
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-strong: #1d4ed8;
+  --credit: #4ade80;
+  --debit: #f87171;
+  --danger: #dc2626;
+  --radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.brand {
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+}
+
+.brand span {
+  color: var(--accent);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.error {
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+/* Forms and buttons */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem 1.5rem;
+}
+
+.auth-card .brand {
+  display: block;
+  text-align: center;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+.otp-input {
+  text-align: center;
+  font-size: 1.5rem;
+  letter-spacing: 0.4em;
+}
+
+.btn-primary,
+.btn-danger {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  color: #fff;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-primary:disabled,
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-link {
+  display: block;
+  margin: 0.75rem auto 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* App shell */
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 5.5rem;
+}
+
+.topbar {
+  padding: 1.25rem 1.25rem 0.5rem;
+}
+
+.content {
+  padding: 0 1.25rem 1.5rem;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  justify-content: space-around;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 0 calc(0.6rem + env(safe-area-inset-bottom));
+}
+
+.nav-item {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.nav-item.active {
+  color: var(--accent);
+}
+
+/* Dashboard */
+.balance-card {
+  background: linear-gradient(135deg, var(--accent-strong), #1e3a8a);
+  border: none;
+}
+
+.balance {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0.25rem 0;
+}
+
+.tx-list {
+  padding: 0.25rem 1.25rem;
+  list-style: none;
+}
+
+.tx-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tx-row:last-child {
+  border-bottom: none;
+}
+
+.tx-title {
+  font-weight: 600;
+}
+
+.amount {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.amount.credit {
+  color: var(--credit);
+}
+
+.amount.debit {
+  color: var(--debit);
+}
+
+/* Account */
+.details {
+  margin-top: 0.5rem;
+}
+
+.details-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.details-row:last-child {
+  border-bottom: none;
+}
+
+.details-row dd {
+  text-align: right;
+  word-break: break-all;
+}
+
+.account .btn-danger {
+  margin-top: 1.25rem;
+}
+
+.card .section-title {
+  margin-top: 0;
+}
+
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Web: sidebar navigation and wider two-column layout */
+@media (min-width: 768px) {
+  .app {
+    max-width: none;
+    margin-left: 220px;
+    padding-bottom: 0;
+  }
+
+  .topbar,
+  .content {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .topbar {
+    padding: 1.75rem 2rem 0;
+  }
+
+  .content {
+    padding: 1.25rem 2rem 2rem;
+  }
+
+  .bottom-nav {
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 220px;
+    max-width: none;
+    transform: none;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0.4rem;
+    border-top: none;
+    border-right: 1px solid var(--border);
+    padding: 1.75rem 1rem;
+  }
+
+  .nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+  }
+
+  .nav-item.active {
+    background: rgba(59, 130, 246, 0.14);
+  }
+
+  .dashboard {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  .dashboard-txns .section-title {
+    margin-top: 0;
+  }
+
+  .account {
+    max-width: 640px;
+  }
+}
+</code></pre></div></div>
+<hr />
+<h2 id="step-13-add-the-launch-script">Step 13: Add the launch script</h2>
+<p><strong><code>start.sh</code></strong> (project root)</p>
+<div class="block"><div class="block-head"><span>bash</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>#!/usr/bin/env bash
+# Launches the LedgerOne website (with the mock API) on http://localhost:5173
+set -euo pipefail
+
+cd &quot;$(dirname &quot;$0&quot;)&quot;
+
+if ! command -v npm &gt;/dev/null 2&gt;&amp;1; then
+  echo &quot;npm is required. Install Node.js 18+ and try again.&quot; &gt;&amp;2
+  exit 1
+fi
+
+if [ ! -d node_modules ]; then
+  echo &quot;Installing dependencies...&quot;
+  npm install
+fi
+
+echo &quot;Starting LedgerOne at http://localhost:5173 (demo login: 9876543210 / OTP 123456)&quot;
+exec npm run dev -- &quot;$@&quot;
+</code></pre></div></div>
+<p>Make it executable:</p>
+<div class="block"><div class="block-head"><span>bash</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>chmod +x start.sh
+</code></pre></div></div>
+<hr />
+<h2 id="step-14-build-lint-and-run">Step 14: Build, lint and run</h2>
+<div class="block"><div class="block-head"><span>bash</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>npm run build
+npm run lint
+./start.sh
+</code></pre></div></div>
+<p>Open http://localhost:5173 in a desktop browser and in a phone-sized view (DevTools device mode).</p>
+<ol>
+<li>Enter <code>9876543210</code> and click <strong>Send OTP</strong>.</li>
+<li>Enter <code>123456</code> and click <strong>Verify &amp; log in</strong>.</li>
+<li>You land on the Dashboard with the balance and transactions.</li>
+<li>Click <strong>Account</strong>, then <strong>Log out</strong>.</li>
+</ol>
+<hr />
+<h2 id="step-15-test-the-apis-with-curl">Step 15: Test the APIs with curl</h2>
+<p>With the dev server running:</p>
+<div class="block"><div class="block-head"><span>bash</span><button class="copy" type="button">Copy</button></div><div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>curl -X POST http://localhost:5173/api/auth/otp -H 'Content-Type: application/json' -d '{&quot;phone&quot;:&quot;9876543210&quot;}'
+curl -X POST http://localhost:5173/api/auth/verify -H 'Content-Type: application/json' -d '{&quot;phone&quot;:&quot;9876543210&quot;,&quot;otp&quot;:&quot;123456&quot;}'
+curl http://localhost:5173/api/account -H 'Authorization: Bearer mock-session-jwt-token-active'
+curl http://localhost:5173/api/transactions -H 'Authorization: Bearer mock-session-jwt-token-active'
+curl -X POST http://localhost:5173/api/auth/logout -H 'Authorization: Bearer mock-session-jwt-token-active'
+</code></pre></div></div>
+<hr />
+<h2 id="responsive-behaviour-what-step-12-gives-you">Responsive behaviour (what Step 12 gives you)</h2>
+<table>
+<thead>
+<tr>
+<th>Width</th>
+<th>Layout</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Below 768px (phone)</td>
+<td>Single column, bottom tab bar (Dashboard / Account)</td>
+</tr>
+<tr>
+<td>768px and up (web)</td>
+<td>Left sidebar navigation, dashboard split into balance card and transactions list</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="final-file-tree">Final file tree</h2>
+<div class="block"><div class="block-head"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>ledgerOne/
+├── .gitignore
+├── .oxlintrc.json
+├── BUILD_FROM_SCRATCH.md
+├── README.md
+├── index.html
+├── package.json
+├── package-lock.json        (generated by npm install)
+├── start.sh
+├── tsconfig.json
+├── tsconfig.app.json
+├── tsconfig.node.json
+├── vite.config.ts
+└── src/
+    ├── App.tsx
+    ├── api.ts
+    ├── index.css
+    ├── main.tsx
+    ├── components/
+    │   ├── AccountPage.tsx
+    │   ├── Dashboard.tsx
+    │   └── LoginScreen.tsx
+    └── mock/
+        ├── mockApi.ts
+        └── mockFetch.ts
+</code></pre></div>
+<p><code>README.md</code> is the API and run reference. It is optional for the build.</p>
+</main>
+<script>
+  document.querySelectorAll('button.copy').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const text = button.closest('.block').querySelector('pre').innerText;
+      let ok = false;
+      try { await navigator.clipboard.writeText(text); ok = true; } catch {
+        const area = document.createElement('textarea');
+        area.value = text; document.body.appendChild(area); area.select();
+        ok = document.execCommand('copy'); area.remove();
+      }
+      button.textContent = ok ? 'Copied' : 'Failed';
+      button.classList.toggle('done', ok);
+      setTimeout(() => { button.textContent = 'Copy'; button.classList.remove('done'); }, 1400);
+    });
+  });
+</script>
+</body>
+</html>
